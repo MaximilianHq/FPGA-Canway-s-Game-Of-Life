@@ -1,14 +1,3 @@
-
-//NOTE, None of this code is copied nor had we an leading example 
-//and therefore we have simply tried to translate c++ code, as it isn't that complicated.
-//therefore we are sure tries to do things than cannot be implemented on the fpga
-//or that use a lot of uneccesary memmory and processes.
-//
-//the idea is that we create a module for our grid that has some functions such as the game logic
-//and then we store every instance of those modules so that we can play back the timeline later on.
-//the main problem is that it wount accept our module as a datatype / object.
-//we have notet that oop doesen't really work which migch be part of the issue.
-
 typedef enum logic [7:0] { // define clans
 	NEUTRAL = 8'hFFFFFF
 } clans;
