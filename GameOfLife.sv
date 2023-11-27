@@ -1,36 +1,50 @@
+
+//NOTE, None of this code is copied nor had we an leading example 
+//and therefore we have simply tried to translate c++ code, as it isn't that complicated.
+//therefore we are sure tries to do things than cannot be implemented on the fpga
+//or that use a lot of uneccesary memmory and processes.
+//
+//the idea is that we create a module for our grid that has some functions such as the game logic
+//and then we store every instance of those modules so that we can play back the timeline later on.
+//the main problem is that it wount accept our module as a datatype / object.
+//we have notet that oop doesen't really work which migch be part of the issue.
+
 typedef enum logic [7:0] { // define clans
-	NEUTRAL = 8'hFFFFFF,
-	CLAN1 = 8'hFF0000,
-	CLAN2 = 8'h00FF00,
-	CLAN3 = 8'h0000FF
+	NEUTRAL = 8'hFFFFFF
 } clans;
 
-typedef struct packed { // define new cell
+typedef struct{ // define new cell
 	logic alive;
 	clans clan;
 } entity;
 
-module sentry #(parameter GRID_SIZE);
+parameter GRIDSIZE = 10;
 
-	initial begin
-		entity grid[GRID_SIZE][GRID_SIZE];
-	end
+typedef struct{ // define grid;
+	entity grid[GRIDSIZE][GRIDSIZE];
+} grid_layout;
+
+module GameOfLife ();
+	localparam GENERATIONS = 10; // amount of simulation steps
 	
-	function void initialize_grid();
+	// positions for surrounding neighbours
+	// packed array
+	int indices[8][2] = '{ '{-1, -1}, '{-1, 0}, '{-1, 1}, '{0, -1}, '{0, 1}, '{1, -1}, '{1, 0}, '{1, 1} };
+	
+	function void initiate_grid(ref grid_layout grid_inst);
 		// initialize every grid entity
-		for (int i = 0; i < GRID_SIZE; i = i + 1) begin
-			for (int j = 0; j < GRID_SIZE; j = j + 1) begin
-				grid[i][j].alive = 0;
-				grid[i][j].clan = NEUTRAL;
+		for (int i = 0; i < GRIDSIZE; i = i + 1)
+			for (int j = 0; j < GRIDSIZE; j = j + 1) begin
+				grid_inst.grid[i][j].alive = 0;
+				grid_inst.grid[i][j].clan = NEUTRAL;
+				
 			end
-		end
 	endfunction
 	
 	function automatic void count_neighbours(
-		input entity grid[GRID_SIZE][GRID_SIZE],
-		input int i, j,
-		input int indices[8][2],
-		output int neighbours_alive
+	input grid_layout grid_inst, // maybe i dont have to include things that already are inside the module??? ex: grid
+	input int i, j,
+	output int neighbours_alive
 	);
 	
 		// itterate through indeces
@@ -38,53 +52,51 @@ module sentry #(parameter GRID_SIZE);
 			int l = i + indices[k][0];
 			int m = j + indices[k][1];
 			
-			// if a neighbour is outside array, treat it as not alive
-			if (l < 0 || l >= GRID_SIZE ||
-				 m < 0 || m >= GRID_SIZE) begin
+			// if an indice is outside the array, skip over it
+			if (l < 0 || l >= GRIDSIZE ||
+				 m < 0 || m >= GRIDSIZE)
 				continue;
-			end
 				
 			// check if neighbour is alive
-			else if (grid[l][m].alive == 1) begin
+			else if (grid_inst[l][m].alive == 1)
 				neighbours_alive = neighbours_alive + 1;
-			end
+				
 		end
 		
 	endfunction
 	
-	/*function automatic void get_next_gen ()
-		//apply gamertules
-		
-	endfunction*/
+//	function get_next_gen(ref grid_layout grid);
+//		
+//		// game logic goes here...
+//		// call function get_neighbours
+//		
+//	endfunction
 
-endmodule
-
-module GameOfLife ();
-	parameter GRID_SIZE = 2;
-	parameter GENERATIONS = 10; // amount of simulation steps
-	
-	int indices[8][2] = '{ { -1, -1 }, { -1, 0 }, { -1, 1 }, { 0, -1 }, { 0, 1 }, { 1, -1 }, { 1, 0 }, { 1, 1 } };
-	
 	// create first grid
-	sentry #(GRID_SIZE) grid_inst;
+	grid_layout grid_init; // THIS IS NOT WORKING //
 	
 	// array to store grid generation
-	sentry #(GRID_SIZE) evolution[0:GENERATIONS-1];
-
-	//initialize first grid
-	grid_inst.initialize_grid();
+	grid_layout evolution[GENERATIONS]; // THIS IS NOT WORKING //
 	
-	// store first generation
-	evolution[0] = grid_inst;
+	initial begin
+	
+		// initialize first grid
+		initiate_grid(grid_init);
+		
+		// save first generation
+		evolution[0] = grid_init;
+	
+	end
+	
 		
 	// run simulation
-	/*
 	for (int gen = 1; gen < GENERATIONS; gen = gen + 1) begin
+		// copy previous generation
+		grid_layout grid_inst = evolution[gen-1];
 		// generate next generation
-		grid_inst.get_next_gen();
+//		get_next_gen(grid_inst);
 		// store the new generation
 		evolution[gen] = grid_inst;
 	end
-	*/
 	
 endmodule
