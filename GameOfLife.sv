@@ -1,91 +1,120 @@
-typedef enum logic [7:0] { // define clans
-	NEUTRAL = 8'hFFFFFF
+typedef enum logic [7:0] {
+    NEUTRAL = 8'hFFFFFF
 } clans;
 
-typedef struct{ // define new cell
-	logic alive;
-	clans clan;
-} entity;
+/// TEMP ///
 
-parameter GRIDSIZE = 10;
 
-typedef struct{ // define grid;
-	entity grid[GRIDSIZE][GRIDSIZE];
-} grid_layout;
 
-module GameOfLife ();
-	localparam GENERATIONS = 10; // amount of simulation steps
+module Cell(
+    input logic clk,
+    input logic rst,
+	 input logic [7:0] neighbors,
+    output logic state
+);
+
+	logic next_state;
+	logic default_state; // ändra till structs senare
+	int population; 
 	
-	// positions for surrounding neighbours
-	// packed array
-	int indices[8][2] = '{ '{-1, -1}, '{-1, 0}, '{-1, 1}, '{0, -1}, '{0, 1}, '{1, -1}, '{1, 0}, '{1, 1} };
+	// sum neighbors alive
+	assign population = neightbors[0] +
+							  neightbors[1] +
+							  neightbors[2] +
+							  neightbors[3] +
+							  neightbors[4] +
+							  neightbors[5] +
+							  neightbors[6] +
+							  neightbors[7];
 	
-	function void initiate_grid(ref grid_layout grid_inst);
-		// initialize every grid entity
-		for (int i = 0; i < GRIDSIZE; i = i + 1)
-			for (int j = 0; j < GRIDSIZE; j = j + 1) begin
-				grid_inst.grid[i][j].alive = 0;
-				grid_inst.grid[i][j].clan = NEUTRAL;
-				
+	always_ff @(posedge clk or posedge rst) begin
+		if (rst) begin
+			nextstate <= default_state;
+		end else begin
+
+			// Apply Game of Life rules
+			if (state) begin
+				 // Cell is alive
+				 if (population < 2 || population > 3) begin
+					  // Overcrowding or loneliness, cell dies
+					  next_state <= 0;
+				 end
+			end else begin
+				 // Cell is dead
+				 if (population == 3) begin
+					  // Exactly 3 neighbors, cell becomes alive
+					  next_state <= 1;
+				 end
 			end
-	endfunction
-	
-	function automatic void count_neighbours(
-	input grid_layout grid_inst, // maybe i dont have to include things that already are inside the module??? ex: grid
-	input int i, j,
-	output int neighbours_alive
-	);
-	
-		// itterate through indeces
-		for (int k = 0; k < 8; k = k + 1) begin
-			int l = i + indices[k][0];
-			int m = j + indices[k][1];
-			
-			// if an indice is outside the array, skip over it
-			if (l < 0 || l >= GRIDSIZE ||
-				 m < 0 || m >= GRIDSIZE)
-				continue;
-				
-			// check if neighbour is alive
-			else if (grid_inst[l][m].alive == 1)
-				neighbours_alive = neighbours_alive + 1;
-				
 		end
-		
-	endfunction
-	
-//	function get_next_gen(ref grid_layout grid);
-//		
-//		// game logic goes here...
-//		// call function get_neighbours
-//		
-//	endfunction
+		state <= nextstate;
+	end
 
-	// create first grid
-	grid_layout grid_init; // THIS IS NOT WORKING //
+
+endmodule
+
+module GameOfLife2(
+	input logic clk,
+	input logic rst
+);
+
+	parameter GRIDSIZE = 10;
+	parameter GENERATIONS = 10;
 	
-	// array to store grid generation
-	grid_layout evolution[GENERATIONS]; // THIS IS NOT WORKING //
+	logic cells[GRIDSIZE][GRIDSIZE];
+
+	genvar i, j;
+	generate
+		for (i=0; i<GRIDSIZE; i=i+1) begin : row
+			for (j=0; j<GRIDSIZE; j=j+1) begin : col
+				logic [7:0] neighbors;
+				
+				// make condition for index
+				always_comb begin
+					neightbors[0] = cells[i-1][j-1];
+					neightbors[1] = cells[i-1][j];
+					neightbors[2] = cells[i-1][j+1];
+					neightbors[3] = cells[i][j-1];
+					neightbors[4] = cells[i][j+1];
+					neightbors[5] = cells[i+1][j-1];
+					neightbors[6] = cells[i+1][j];
+					neightbors[7] = cells[i+1][j+1];
+				end
+				
+				Cell cell_inst(.clk(clk), .rst(rst), .neighbors(neighbors), .state(cells[i][j]));
+			end
+		end
+	endgenerate
 	
-	initial begin
-	
-		// initialize first grid
-		initiate_grid(grid_init);
-		
-		// save first generation
-		evolution[0] = grid_init;
-	
-	end
-	
-		
-	// run simulation
-	for (int gen = 1; gen < GENERATIONS; gen = gen + 1) begin
-		// copy previous generation
-		grid_layout grid_inst = evolution[gen-1];
-		// generate next generation
-//		get_next_gen(grid_inst);
-		// store the new generation
-		evolution[gen] = grid_inst;
-	end
-	
+
+//    // Run simulation
+//    always_ff @(posedge clk or posedge rst) begin
+//        if (rst) begin
+//            Cell cells[GRIDSIZE][GRIDSIZE](clk, rst, 0);
+//        end else begin
+//            // Your Game of Life logic here
+//            // Update the state of each cell based on its neighbors
+//            for (int i = 0; i < GRIDSIZE; i = i + 1)
+//                for (int j = 0; j < GRIDSIZE; j = j + 1) begin
+//                    // Count neighbors for the cell at position (i, j)
+//                    int neighbors_alive = 0;
+//
+//                    // Iterate through neighboring cells
+//                    for (int ni = i - 1; ni <= i + 1; ni = ni + 1)
+//                        for (int nj = j - 1; nj <= j + 1; nj = nj + 1) begin
+//                            // Skip the center cell (i, j)
+//                            if (ni == i && nj == j)
+//                                continue;
+//
+//                            // Check boundaries to avoid accessing outside the array
+//                            if (ni >= 0 && ni < GRIDSIZE && nj >= 0 && nj < GRIDSIZE)
+//                                neighbors_alive += cells[ni][nj](.alive);
+//                        end
+//
+//                    // Now neighbors_alive contains the count of alive neighbors for the current cell
+//                    cells[i][j].alive_internal <= neighbors_alive;
+//                end
+//        end
+//    end
+
 endmodule
