@@ -1,91 +1,87 @@
-typedef enum logic [7:0] { // define clans
-	NEUTRAL = 8'hFFFFFF
-} clans;
+module Cell(
+    input logic clk,
+    input logic rst,
+	 input logic [7:0] neighbors,
+	 input logic default_state,
+    output logic state
+);
 
-typedef struct{ // define new cell
-	logic alive;
-	clans clan;
-} entity;
+	logic nextstate;
+// logic default_state = 1; // ändra till structs senare
+	int population; 
 
-parameter GRIDSIZE = 10;
-
-typedef struct{ // define grid;
-	entity grid[GRIDSIZE][GRIDSIZE];
-} grid_layout;
-
-module GameOfLife ();
-	localparam GENERATIONS = 10; // amount of simulation steps
+	// sum neighbors alive
+	assign population = neighbors[0] +
+							  neighbors[1] +
+							  neighbors[2] +
+							  neighbors[3] +
+							  neighbors[4] +
+							  neighbors[5] +
+							  neighbors[6] +
+							  neighbors[7];
 	
-	// positions for surrounding neighbours
-	// packed array
-	int indices[8][2] = '{ '{-1, -1}, '{-1, 0}, '{-1, 1}, '{0, -1}, '{0, 1}, '{1, -1}, '{1, 0}, '{1, 1} };
-	
-	function void initiate_grid(ref grid_layout grid_inst);
-		// initialize every grid entity
-		for (int i = 0; i < GRIDSIZE; i = i + 1)
-			for (int j = 0; j < GRIDSIZE; j = j + 1) begin
-				grid_inst.grid[i][j].alive = 0;
-				grid_inst.grid[i][j].clan = NEUTRAL;
-				
+	always_ff @(posedge clk or posedge rst) begin
+		if (rst) begin
+			nextstate <= default_state;
+		end else begin
+
+			// Apply Game of Life rules
+			if (state) begin
+				 // Cell is alive
+				 if (population < 2 || population > 3) begin
+					  // Overcrowding or loneliness, cell dies
+					  nextstate <= 0;
+				 end
+			end else begin
+				 // Cell is dead
+				 if (population == 3) begin
+					  // Exactly 3 neighbors, cell becomes alive
+					  nextstate <= 1;
+				 end
 			end
-	endfunction
-	
-	function automatic void count_neighbours(
-	input grid_layout grid_inst, // maybe i dont have to include things that already are inside the module??? ex: grid
-	input int i, j,
-	output int neighbours_alive
-	);
-	
-		// itterate through indeces
-		for (int k = 0; k < 8; k = k + 1) begin
-			int l = i + indices[k][0];
-			int m = j + indices[k][1];
-			
-			// if an indice is outside the array, skip over it
-			if (l < 0 || l >= GRIDSIZE ||
-				 m < 0 || m >= GRIDSIZE)
-				continue;
-				
-			// check if neighbour is alive
-			else if (grid_inst[l][m].alive == 1)
-				neighbours_alive = neighbours_alive + 1;
-				
 		end
-		
-	endfunction
-	
-//	function get_next_gen(ref grid_layout grid);
-//		
-//		// game logic goes here...
-//		// call function get_neighbours
-//		
-//	endfunction
+		state <= nextstate;
+	end
 
-	// create first grid
-	grid_layout grid_init; // THIS IS NOT WORKING //
+
+endmodule
+
+module GameOfLife2(
+	input logic clk,
+	input logic rst
+);
+	parameter GRIDSIZE = 3;
 	
-	// array to store grid generation
-	grid_layout evolution[GENERATIONS]; // THIS IS NOT WORKING //
-	
-	initial begin
-	
-		// initialize first grid
-		initiate_grid(grid_init);
-		
-		// save first generation
-		evolution[0] = grid_init;
-	
-	end
-	
-		
-	// run simulation
-	for (int gen = 1; gen < GENERATIONS; gen = gen + 1) begin
-		// copy previous generation
-		grid_layout grid_inst = evolution[gen-1];
-		// generate next generation
-//		get_next_gen(grid_inst);
-		// store the new generation
-		evolution[gen] = grid_inst;
-	end
-	
+	logic cells[GRIDSIZE][GRIDSIZE];
+	logic def[3][3] = '{'{0,0,0},'{1,1,1},'{0,0,0}}; // packed array
+
+	genvar i, j;
+	generate		
+		for (i=0; i<GRIDSIZE; i=i+1) begin : row
+			for (j=0; j<GRIDSIZE; j=j+1) begin : col
+				logic [7:0] neighbors = 8'b00000000;
+				
+				// validate positions
+				always_comb begin
+					if (i-1 >= 0 && j-1 >= 0)
+						neighbors[0] = cells[i-1][j-1];
+					if (i-1 >= 0)
+						neighbors[1] = cells[i-1][j];
+					if (i-1 >= 0 && j+1 < GRIDSIZE)
+						neighbors[2] = cells[i-1][j+1];
+					if (j-1 >=0)
+						neighbors[3] = cells[i][j-1];
+					if (j+1 < GRIDSIZE)
+						neighbors[4] = cells[i][j+1];
+					if (i+1 < GRIDSIZE && j-1 >= 0)
+						neighbors[5] = cells[i+1][j-1];
+					if (i+1 < GRIDSIZE)
+						neighbors[6] = cells[i+1][j];
+					if (i+1 < GRIDSIZE && j+1 < GRIDSIZE)
+						neighbors[7] = cells[i+1][j+1];
+				end
+				Cell cell_inst(.clk(clk), .rst(rst), .neighbors(neighbors), .default_state(def[i][j]), .state(cells[i][j]));
+			end
+		end
+	endgenerate
 endmodule
