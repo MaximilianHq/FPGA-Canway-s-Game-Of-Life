@@ -133,9 +133,9 @@ endmodule
 
 module Cell(
     input logic clk,
-    input logic rst_n, rst_def,
-	 input logic [7:0] neighbors,
-	 input entity default_state,
+    input logic rst_n,
+    input logic [7:0] neighbors,
+    input entity default_state,
     output entity data
 );
 
@@ -246,7 +246,7 @@ module GameOfLife (
 						neighbors[7] = cells[i+1][j+1].state;
 				end
 				
-				Cell cell_inst(.clk(gol_clk), .rst_n(rst_n), .rst_def(rst_def), .neighbors(neighbors), .default_state(rand_colony[i][j]), .data(cells[i][j]));
+				Cell cell_inst(.clk(gol_clk), .rst_n(rst_n), .neighbors(neighbors), .default_state(rand_colony[i][j]), .data(cells[i][j]));
 			end
 		end
 	endgenerate
